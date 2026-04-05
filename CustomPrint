@@ -13,73 +13,41 @@ local Modules = {
     }
 }
 
-local function color3ToRgbString(color)
-    if type(color) == "Color3" then
-        return string.format("%d,%d,%d", color.R * 255, color.G * 255, color.B * 255)
-    end
-    return tostring(color)
-end
-
-local function getConsoleText()
-    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-    if not console then return nil end
-    local window = console:FindFirstChild("DevConsoleWindow")
-    if not window then return nil end
-    local ui = window:FindFirstChild("DevConsoleUI")
-    if not ui then return nil end
-    
-    local mainView = ui:FindFirstChild("MainView")
-    if mainView then
-        return mainView:FindFirstChild("ClientLog")
-    end
-    return ui:FindFirstChild("ClientLog")
-end
-
-local function cprint(value, color)
-    local colorString
-    
-    if type(color) == "Color3" then
-        colorString = color3ToRgbString(color)
-    elseif type(color) == "string" and Modules.Colors[color] then
-        colorString = Modules.Colors[color]
-    else
-        colorString = "255,255,255"
-    end
-    
-    local clientLog = getConsoleText()
-    if not clientLog then
-        print(value)
-        return
-    end
-    
-    local coloredText = '<font color="rgb(' .. colorString .. ')">' .. value .. '</font>'
-    
-    local originalPrint = print
-    print = function(...)
-        local args = {...}
-        for i, arg in ipairs(args) do
-            if type(arg) == "string" and arg == value then
-                args[i] = coloredText
+Modules.ChangeColor = function()
+    game:GetService("RunService").Heartbeat:Connect(function()
+        local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+        if console then
+            for _, v in pairs(console:GetDescendants()) do
+                if v:IsA("TextLabel") then
+                    v.RichText = true
+                end
             end
         end
-        originalPrint(unpack(args))
-    end
-    
-    originalPrint(value)
-    print = originalPrint
+    end)
 end
 
-local function init()
-    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-    if console then
-        for _, v in pairs(console:GetDescendants()) do
-            if v:IsA("TextLabel") then
-                v.RichText = true
-            end
+function Modules.cprint(text, color, size)
+    local colorString = "255,255,255"
+    
+    if color then
+        if type(color) == "string" and Modules.Colors[color] then
+            colorString = Modules.Colors[color]
+        elseif type(color) == "Color3" then
+            colorString = string.format("%d,%d,%d", color.R * 255, color.G * 255, color.B * 255)
+        elseif type(color) == "string" then
+            colorString = color
         end
     end
+    
+    local formattedText = '<font color="rgb(' .. colorString .. ')"'
+    if size and type(size) == "number" then
+        formattedText = formattedText .. ' size="' .. tostring(size) .. '"'
+    end
+    formattedText = formattedText .. '>' .. tostring(text) .. '</font>'
+    
+    print(formattedText)
 end
 
-init()
+Modules.ChangeColor()
 
-return cprint
+return Modules.cprint
