@@ -3,28 +3,70 @@ local function cprint(value, color)
     local marker = "--" .. id
     
     local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-    if not console then return print(value) end
+    if not console then 
+        print(value)
+        return 
+    end
     
     local window = console:FindFirstChild("DevConsoleWindow")
-    if not window then return print(value) end
+    if not window then 
+        print(value)
+        return 
+    end
     
     local ui = window:FindFirstChild("DevConsoleUI")
-    if not ui then return print(value) end
+    if not ui then 
+        print(value)
+        return 
+    end
     
     local mainView = ui:FindFirstChild("MainView")
-    if not mainView then return print(value) end
+    if not mainView then 
+        local clientLog = ui:FindFirstChild("ClientLog")
+        if not clientLog then
+            print(value)
+            return
+        end
+        
+        local function colorizeMessage(msgLabel)
+            if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
+            local text = msgLabel.Text
+            if not string.find(text, marker) then return false end
+            
+            msgLabel.Text = value
+            msgLabel.TextColor3 = color
+            return true
+        end
+        
+        for _, child in ipairs(clientLog:GetChildren()) do
+            local msg = child:FindFirstChild("msg")
+            if colorizeMessage(msg) then break end
+        end
+        
+        local connection
+        connection = clientLog.ChildAdded:Connect(function(child)
+            local msg = child:FindFirstChild("msg")
+            if colorizeMessage(msg) then
+                connection:Disconnect()
+            end
+        end)
+        
+        print(marker .. " " .. value)
+        return
+    end
     
     local clientLog = mainView:FindFirstChild("ClientLog")
-    if not clientLog then return print(value) end
+    if not clientLog then
+        print(value)
+        return
+    end
     
     local function colorizeMessage(msgLabel)
-        if not msgLabel or not msgLabel:IsA("TextLabel") then return end
+        if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
         local text = msgLabel.Text
-        local matchPos = string.find(text, marker)
-        if not matchPos then return end
+        if not string.find(text, marker) then return false end
         
-        local prefix = string.sub(text, 1, matchPos - 1)
-        msgLabel.Text = prefix .. value
+        msgLabel.Text = value
         msgLabel.TextColor3 = color
         return true
     end
