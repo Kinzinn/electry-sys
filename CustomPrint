@@ -1,0 +1,28 @@
+local cprint = function(value, color)
+    local printid = tostring(os.time())..'..'..tostring(math.random(100000000,999999999))
+    print(value..'-'..printid)
+    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.ChildAdded:Connect(function(mainviewname)
+        if mainviewname.Name == 'MainView' then
+            game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ChildAdded:Connect(function(ClientLogName)
+                if ClientLogName.Name == 'ClientLog' then
+                    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ClientLog.ChildAdded:Connect(function(child)
+                        local msg = child:FindFirstChild("msg")
+                        if msg and msg:IsA("TextLabel") and msg.Text:match("%-%-%s*(.*)")==value..'-'..printid then
+                            msg.TextColor3 = color
+                            msg.Text = msg.Text:match("(.-)%-%-").."-- "..value
+                        end
+                    end)
+                end
+            end)
+        end
+    end)
+    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ClientLog.ChildAdded:Connect(function(child)
+        local msg = child:FindFirstChild("msg")
+        if msg and msg:IsA("TextLabel") and msg.Text:match("%-%-%s*(.*)")==value..'-'..printid then
+            msg.TextColor3 = color
+            msg.Text = msg.Text:match("(.-)%-%-").."-- "..value
+        end
+    end)
+end
+
+return cprint
