@@ -35,24 +35,6 @@ local function getConsoleText()
     return ui:FindFirstChild("ClientLog")
 end
 
-local function colorizeMessage(msgLabel, colorString, textValue)
-    if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
-    
-    local fullText = msgLabel.Text
-    local pattern = "(%[%d+:%d+:%d+%])(.-)(%-%-.*)"
-    local timeStamp, originalText, marker = string.match(fullText, pattern)
-    
-    if timeStamp and marker then
-        local coloredTime = '<font color="rgb(' .. colorString .. ')">' .. timeStamp .. '</font>'
-        local coloredMarker = '<font color="rgb(' .. colorString .. ')">--</font>'
-        local newMarker = string.gsub(marker, "%-%-", coloredMarker)
-        msgLabel.Text = coloredTime .. originalText .. newMarker .. " " .. textValue
-        msgLabel.RichText = true
-        return true
-    end
-    return false
-end
-
 local function cprint(value, color)
     local colorString
     
@@ -64,36 +46,27 @@ local function cprint(value, color)
         colorString = "255,255,255"
     end
     
-    local id = string.format("%d.%d", os.time(), math.random(1e8, 9e8))
-    local marker = "--" .. id
-    
     local clientLog = getConsoleText()
     if not clientLog then
         print(value)
         return
     end
     
-    local function tryColorize(msgLabel)
-        if not msgLabel then return false end
-        local text = msgLabel.Text
-        if not string.find(text, marker) then return false end
-        return colorizeMessage(msgLabel, colorString, value)
-    end
+    local coloredText = '<font color="rgb(' .. colorString .. ')">' .. value .. '</font>'
     
-    for _, child in ipairs(clientLog:GetChildren()) do
-        local msg = child:FindFirstChild("msg")
-        if tryColorize(msg) then break end
-    end
-    
-    local connection
-    connection = clientLog.ChildAdded:Connect(function(child)
-        local msg = child:FindFirstChild("msg")
-        if tryColorize(msg) then
-            connection:Disconnect()
+    local originalPrint = print
+    print = function(...)
+        local args = {...}
+        for i, arg in ipairs(args) do
+            if type(arg) == "string" and arg == value then
+                args[i] = coloredText
+            end
         end
-    end)
+        originalPrint(unpack(args))
+    end
     
-    print(marker .. " " .. value)
+    originalPrint(value)
+    print = originalPrint
 end
 
 local function init()
@@ -105,17 +78,6 @@ local function init()
             end
         end
     end
-    
-    game:GetService("RunService").Heartbeat:Connect(function()
-        local consoleCheck = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-        if consoleCheck then
-            for _, v in pairs(consoleCheck:GetDescendants()) do
-                if v:IsA("TextLabel") and not v.RichText then
-                    v.RichText = true
-                end
-            end
-        end
-    end)
 end
 
 init()
