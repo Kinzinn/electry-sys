@@ -1,90 +1,110 @@
+local Modules = {
+    Colors = {
+        ["Green"] = "0,255,0",
+        ["Cyan"] = "33,161,163",
+        ["Red"] = "255,0,0",
+        ["Blue"] = "0,0,255",
+        ["Yellow"] = "255,255,0",
+        ["Purple"] = "128,0,128",
+        ["Orange"] = "255,165,0",
+        ["Pink"] = "255,192,203",
+        ["White"] = "255,255,255",
+        ["Gray"] = "128,128,128"
+    }
+}
+
+local function getConsoleText()
+    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+    if not console then return nil end
+    local window = console:FindFirstChild("DevConsoleWindow")
+    if not window then return nil end
+    local ui = window:FindFirstChild("DevConsoleUI")
+    if not ui then return nil end
+    
+    local mainView = ui:FindFirstChild("MainView")
+    if mainView then
+        return mainView:FindFirstChild("ClientLog")
+    end
+    return ui:FindFirstChild("ClientLog")
+end
+
+local function colorizeMessage(msgLabel, color, textValue)
+    if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
+    local fullText = msgLabel.Text
+    local pattern = "(%[%d+:%d+:%d+%])(.-)(%-%-.*)"
+    local timeStamp, originalText, marker = string.match(fullText, pattern)
+    
+    if timeStamp and marker then
+        local coloredTime = '<font color="rgb(' .. Modules.Colors[color] .. ')">' .. timeStamp .. '</font>'
+        local coloredMarker = '<font color="rgb(' .. Modules.Colors[color] .. ')">--</font>'
+        local newMarker = string.gsub(marker, "%-%-", coloredMarker)
+        msgLabel.Text = coloredTime .. originalText .. newMarker .. " " .. textValue
+        msgLabel.RichText = true
+        return true
+    end
+    return false
+end
+
 local function cprint(value, color)
+    if not Modules.Colors[color] then
+        warn("Color not found: " .. color .. ", using White")
+        color = "White"
+    end
+    
     local id = string.format("%d.%d", os.time(), math.random(1e8, 9e8))
     local marker = "--" .. id
     
-    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-    if not console then 
-        print(value)
-        return 
-    end
-    
-    local window = console:FindFirstChild("DevConsoleWindow")
-    if not window then 
-        print(value)
-        return 
-    end
-    
-    local ui = window:FindFirstChild("DevConsoleUI")
-    if not ui then 
-        print(value)
-        return 
-    end
-    
-    local mainView = ui:FindFirstChild("MainView")
-    if not mainView then 
-        local clientLog = ui:FindFirstChild("ClientLog")
-        if not clientLog then
-            print(value)
-            return
-        end
-        
-        local function colorizeMessage(msgLabel)
-            if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
-            local text = msgLabel.Text
-            if not string.find(text, marker) then return false end
-            
-            msgLabel.Text = value
-            msgLabel.TextColor3 = color
-            return true
-        end
-        
-        for _, child in ipairs(clientLog:GetChildren()) do
-            local msg = child:FindFirstChild("msg")
-            if colorizeMessage(msg) then break end
-        end
-        
-        local connection
-        connection = clientLog.ChildAdded:Connect(function(child)
-            local msg = child:FindFirstChild("msg")
-            if colorizeMessage(msg) then
-                connection:Disconnect()
-            end
-        end)
-        
-        print(marker .. " " .. value)
-        return
-    end
-    
-    local clientLog = mainView:FindFirstChild("ClientLog")
+    local clientLog = getConsoleText()
     if not clientLog then
         print(value)
         return
     end
     
-    local function colorizeMessage(msgLabel)
-        if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
+    local function tryColorize(msgLabel)
+        if not msgLabel then return false end
         local text = msgLabel.Text
         if not string.find(text, marker) then return false end
-        
-        msgLabel.Text = value
-        msgLabel.TextColor3 = color
-        return true
+        return colorizeMessage(msgLabel, color, value)
     end
     
     for _, child in ipairs(clientLog:GetChildren()) do
         local msg = child:FindFirstChild("msg")
-        if colorizeMessage(msg) then break end
+        if tryColorize(msg) then break end
     end
     
     local connection
     connection = clientLog.ChildAdded:Connect(function(child)
         local msg = child:FindFirstChild("msg")
-        if colorizeMessage(msg) then
+        if tryColorize(msg) then
             connection:Disconnect()
         end
     end)
     
     print(marker .. " " .. value)
 end
+
+local function init()
+    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+    if console then
+        for _, v in pairs(console:GetDescendants()) do
+            if v:IsA("TextLabel") then
+                v.RichText = true
+            end
+        end
+    end
+    
+    game:GetService("RunService").Heartbeat:Connect(function()
+        local consoleCheck = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+        if consoleCheck then
+            for _, v in pairs(consoleCheck:GetDescendants()) do
+                if v:IsA("TextLabel") and not v.RichText then
+                    v.RichText = true
+                end
+            end
+        end
+    end)
+end
+
+init()
 
 return cprint
