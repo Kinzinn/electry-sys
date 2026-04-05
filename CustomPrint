@@ -13,6 +13,13 @@ local Modules = {
     }
 }
 
+local function rgbToString(rgb)
+    if type(rgb) == "Color3" then
+        return string.format("%d,%d,%d", rgb.R * 255, rgb.G * 255, rgb.B * 255)
+    end
+    return tostring(rgb)
+end
+
 local function getConsoleText()
     local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
     if not console then return nil end
@@ -30,13 +37,16 @@ end
 
 local function colorizeMessage(msgLabel, color, textValue)
     if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
+    
+    local colorString = rgbToString(color)
+    
     local fullText = msgLabel.Text
     local pattern = "(%[%d+:%d+:%d+%])(.-)(%-%-.*)"
     local timeStamp, originalText, marker = string.match(fullText, pattern)
     
     if timeStamp and marker then
-        local coloredTime = '<font color="rgb(' .. Modules.Colors[color] .. ')">' .. timeStamp .. '</font>'
-        local coloredMarker = '<font color="rgb(' .. Modules.Colors[color] .. ')">--</font>'
+        local coloredTime = '<font color="rgb(' .. colorString .. ')">' .. timeStamp .. '</font>'
+        local coloredMarker = '<font color="rgb(' .. colorString .. ')">--</font>'
         local newMarker = string.gsub(marker, "%-%-", coloredMarker)
         msgLabel.Text = coloredTime .. originalText .. newMarker .. " " .. textValue
         msgLabel.RichText = true
@@ -46,9 +56,17 @@ local function colorizeMessage(msgLabel, color, textValue)
 end
 
 local function cprint(value, color)
-    if not Modules.Colors[color] then
-        warn("Color not found: " .. color .. ", using White")
-        color = "White"
+    local colorName = color
+    local colorString
+    
+    if type(color) == "Color3" then
+        colorString = rgbToString(color)
+    elseif type(color) == "string" and Modules.Colors[color] then
+        colorString = Modules.Colors[color]
+        colorName = color
+    else
+        colorString = "255,255,255"
+        colorName = "White"
     end
     
     local id = string.format("%d.%d", os.time(), math.random(1e8, 9e8))
@@ -64,7 +82,7 @@ local function cprint(value, color)
         if not msgLabel then return false end
         local text = msgLabel.Text
         if not string.find(text, marker) then return false end
-        return colorizeMessage(msgLabel, color, value)
+        return colorizeMessage(msgLabel, colorString, value)
     end
     
     for _, child in ipairs(clientLog:GetChildren()) do
