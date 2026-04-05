@@ -1,28 +1,48 @@
-local cprint = function(value, color)
-    local printid = tostring(os.time())..'..'..tostring(math.random(100000000,999999999))
-    print(value..'-'..printid)
-    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.ChildAdded:Connect(function(mainviewname)
-        if mainviewname.Name == 'MainView' then
-            game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ChildAdded:Connect(function(ClientLogName)
-                if ClientLogName.Name == 'ClientLog' then
-                    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ClientLog.ChildAdded:Connect(function(child)
-                        local msg = child:FindFirstChild("msg")
-                        if msg and msg:IsA("TextLabel") and msg.Text:match("%-%-%s*(.*)")==value..'-'..printid then
-                            msg.TextColor3 = color
-                            msg.Text = msg.Text:match("(.-)%-%-").."-- "..value
-                        end
-                    end)
-                end
-            end)
-        end
-    end)
-    game:GetService("CoreGui").DevConsoleMaster.DevConsoleWindow.DevConsoleUI.MainView.ClientLog.ChildAdded:Connect(function(child)
+local function cprint(value, color)
+    local id = string.format("%d.%d", os.time(), math.random(1e8, 9e8))
+    local marker = "--" .. id
+    
+    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+    if not console then return print(value) end
+    
+    local window = console:FindFirstChild("DevConsoleWindow")
+    if not window then return print(value) end
+    
+    local ui = window:FindFirstChild("DevConsoleUI")
+    if not ui then return print(value) end
+    
+    local mainView = ui:FindFirstChild("MainView")
+    if not mainView then return print(value) end
+    
+    local clientLog = mainView:FindFirstChild("ClientLog")
+    if not clientLog then return print(value) end
+    
+    local function colorizeMessage(msgLabel)
+        if not msgLabel or not msgLabel:IsA("TextLabel") then return end
+        local text = msgLabel.Text
+        local matchPos = string.find(text, marker)
+        if not matchPos then return end
+        
+        local prefix = string.sub(text, 1, matchPos - 1)
+        msgLabel.Text = prefix .. value
+        msgLabel.TextColor3 = color
+        return true
+    end
+    
+    for _, child in ipairs(clientLog:GetChildren()) do
         local msg = child:FindFirstChild("msg")
-        if msg and msg:IsA("TextLabel") and msg.Text:match("%-%-%s*(.*)")==value..'-'..printid then
-            msg.TextColor3 = color
-            msg.Text = msg.Text:match("(.-)%-%-").."-- "..value
+        if colorizeMessage(msg) then break end
+    end
+    
+    local connection
+    connection = clientLog.ChildAdded:Connect(function(child)
+        local msg = child:FindFirstChild("msg")
+        if colorizeMessage(msg) then
+            connection:Disconnect()
         end
     end)
+    
+    print(marker .. " " .. value)
 end
 
 return cprint
