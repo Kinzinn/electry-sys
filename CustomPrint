@@ -13,12 +13,107 @@ local Modules = {
     }
 }
 
-Modules.ChangeColor = function()
+local function color3ToRgbString(color)
+    if type(color) == "Color3" then
+        return string.format("%d,%d,%d", color.R * 255, color.G * 255, color.B * 255)
+    end
+    return tostring(color)
+end
+
+local function getConsoleText()
+    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+    if not console then return nil end
+    local window = console:FindFirstChild("DevConsoleWindow")
+    if not window then return nil end
+    local ui = window:FindFirstChild("DevConsoleUI")
+    if not ui then return nil end
+    
+    local mainView = ui:FindFirstChild("MainView")
+    if mainView then
+        return mainView:FindFirstChild("ClientLog")
+    end
+    return ui:FindFirstChild("ClientLog")
+end
+
+local function colorizeMessage(msgLabel, colorString, textValue)
+    if not msgLabel or not msgLabel:IsA("TextLabel") then return false end
+    
+    local fullText = msgLabel.Text
+    local pattern = "(%[%d+:%d+:%d+%])(.*)"
+    local timeStamp, rest = string.match(fullText, pattern)
+    
+    if timeStamp and rest then
+        local coloredTime = '<font color="rgb(' .. colorString .. ')">' .. timeStamp .. '</font>'
+        local coloredText = '<font color="rgb(' .. colorString .. ')">' .. textValue .. '</font>'
+        msgLabel.Text = coloredTime .. " " .. coloredText
+        msgLabel.RichText = true
+        return true
+    end
+    return false
+end
+
+function cprint(value, color)
+    local colorString = "255,255,255"
+    
+    if color then
+        if type(color) == "string" and Modules.Colors[color] then
+            colorString = Modules.Colors[color]
+        elseif type(color) == "Color3" then
+            colorString = color3ToRgbString(color)
+        elseif type(color) == "string" then
+            colorString = color
+        end
+    end
+    
+    local clientLog = getConsoleText()
+    if not clientLog then
+        print(value)
+        return
+    end
+    
+    local function tryColorize(msgLabel)
+        if not msgLabel then return false end
+        return colorizeMessage(msgLabel, colorString, value)
+    end
+    
+    for _, child in ipairs(clientLog:GetChildren()) do
+        local msg = child:FindFirstChild("msg")
+        if msg and tryColorize(msg) then
+            return
+        end
+    end
+    
+    local connection
+    connection = clientLog.ChildAdded:Connect(function(child)
+        local msg = child:FindFirstChild("msg")
+        if msg and tryColorize(msg) then
+            connection:Disconnect()
+        end
+    end)
+    
+    print(value)
+    
+    task.wait(0.1)
+    if connection then
+        connection:Disconnect()
+    end
+end
+
+local function init()
+    local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+    if console then
+        for _, v in pairs(console:GetDescendants()) do
+            if v:IsA("TextLabel") then
+                v.RichText = true
+            end
+        end
+    end
+    
     game:GetService("RunService").Heartbeat:Connect(function()
-        local console = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
-        if console then
-            for _, v in pairs(console:GetDescendants()) do
-                if v:IsA("TextLabel") then
+        local consoleCheck = game:GetService("CoreGui"):FindFirstChild("DevConsoleMaster")
+        if consoleCheck then
+            for _, v in pairs(consoleCheck:GetDescendants()) do
+                if v:IsA("TextLabel") and not v.RichText then
                     v.RichText = true
                 end
             end
@@ -26,28 +121,6 @@ Modules.ChangeColor = function()
     end)
 end
 
-function Modules.cprint(text, color, size)
-    local colorString = "255,255,255"
-    
-    if color then
-        if type(color) == "string" and Modules.Colors[color] then
-            colorString = Modules.Colors[color]
-        elseif type(color) == "Color3" then
-            colorString = string.format("%d,%d,%d", color.R * 255, color.G * 255, color.B * 255)
-        elseif type(color) == "string" then
-            colorString = color
-        end
-    end
-    
-    local formattedText = '<font color="rgb(' .. colorString .. ')"'
-    if size and type(size) == "number" then
-        formattedText = formattedText .. ' size="' .. tostring(size) .. '"'
-    end
-    formattedText = formattedText .. '>' .. tostring(text) .. '</font>'
-    
-    print(formattedText)
-end
+init()
 
-Modules.ChangeColor()
-
-return Modules.cprint
+return cprint
